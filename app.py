@@ -648,7 +648,7 @@ if remote_mode:
 else:
     st.caption("Mode local · les données restent sur cet appareil")
 
-image_column, welcome_column = st.columns([1.05, 0.95], gap="medium", vertical_alignment="stretch")
+image_column, welcome_column = st.columns([1.05, 0.95], gap="medium")
 
 with image_column:
     with st.container(key="hero_photo"):
