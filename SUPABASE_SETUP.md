@@ -18,7 +18,9 @@ url = "https://VOTRE-PROJET.supabase.co"
 anon_key = "VOTRE-CLE-ANON"
 ```
 
-Redémarrez Streamlit. Les personnes qui utilisent l’application doivent chacune créer un compte. Le premier compte crée la troupe et obtient le rôle `chef`; il partage ensuite le code d’invitation affiché dans la barre latérale. Les comptes suivants rejoignent la troupe avec ce code et reçoivent le rôle `membre`.
+Redémarrez Streamlit. Les personnes qui utilisent l’application doivent chacune créer un compte. Le premier compte crée le groupe ScoutVibe et obtient le rôle `chef`; il partage ensuite le code d’invitation affiché dans la barre latérale. Les comptes suivants rejoignent le groupe avec ce code et reçoivent le rôle `membre`.
+
+Un groupe peut gérer plusieurs branches. Depuis l’espace du groupe, un chef ou un assistant peut ajouter une **Meute**, une **Troupe**, une **Compagnie** ou un **Clan**, puis donner un nom à cette unité. Chaque branche possède son propre carnet de chants, sa liste de matériel et son planning. Le calendrier des réunions reste commun au groupe. Les anciennes données sont conservées; les espaces déjà présents dans un fichier JSON importé restent accessibles, même s’ils n’ont pas encore de type de branche attribué.
 
 Le chef peut créer des réunions et consulter les réponses. Les membres peuvent consulter le programme et confirmer leur présence. Les chefs et assistants peuvent gérer le contenu de la troupe.
 

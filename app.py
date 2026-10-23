@@ -14,7 +14,9 @@ except ImportError:
     create_client = None
 
 DATA_FILE = Path(__file__).with_name("scoutvibe_data.json")
-DEFAULT_PARISHES = ["Saint-Jean", "Notre-Dame des Bois", "Saint-Martin"]
+DEFAULT_PARISHES = []
+BRANCH_TYPES = ["Meute", "Troupe", "Compagnie", "Clan"]
+ADD_BRANCH_OPTION = "➕ Ajouter une branche"
 
 
 def default_parish_data():
@@ -55,6 +57,7 @@ def save_data():
     data = {
         "parishes": st.session_state["parishes"],
         "parish_data": st.session_state["parish_data"],
+        "branch_types": st.session_state["branch_types"],
         "meetings": st.session_state.get("meetings", []),
     }
 
@@ -100,6 +103,7 @@ def default_troop_data():
     return {
         "parishes": DEFAULT_PARISHES.copy(),
         "parish_data": {},
+        "branch_types": {},
         "meetings": [],
     }
 
@@ -518,6 +522,7 @@ if remote_mode:
                             imported_data = default_troop_data()
                         imported_data.setdefault("parishes", DEFAULT_PARISHES.copy())
                         imported_data.setdefault("parish_data", {})
+                        imported_data.setdefault("branch_types", {})
                         imported_data.setdefault("meetings", [])
                         supabase_client.table("troop_data").upsert(
                             {"troop_id": str(troop_id), "data": imported_data},
@@ -603,7 +608,7 @@ data_scope = (
 )
 if st.session_state.get("data_scope") != data_scope:
     for state_key in list(st.session_state):
-        if state_key.startswith("material_"):
+        if state_key.startswith("material_") or state_key == "parish_choice":
             del st.session_state[state_key]
 
     if remote_mode:
@@ -622,16 +627,23 @@ if st.session_state.get("data_scope") != data_scope:
         saved_data = default_troop_data()
     saved_parishes = saved_data.get("parishes", DEFAULT_PARISHES)
     saved_parish_data = saved_data.get("parish_data", {})
+    saved_branch_types = saved_data.get("branch_types", {})
     st.session_state["parishes"] = (
         saved_parishes if isinstance(saved_parishes, list) else DEFAULT_PARISHES.copy()
     )
     st.session_state["parish_data"] = (
         saved_parish_data if isinstance(saved_parish_data, dict) else {}
     )
+    st.session_state["branch_types"] = (
+        saved_branch_types if isinstance(saved_branch_types, dict) else {}
+    )
     st.session_state["meetings"] = saved_data.get("meetings", [])
     st.session_state["data_scope"] = data_scope
 
-# Sélectionner automatiquement la paroisse qui vient d'être ajoutée.
+if not isinstance(st.session_state.get("branch_types"), dict):
+    st.session_state["branch_types"] = {}
+
+# Sélectionner automatiquement la branche qui vient d'être ajoutée.
 if "next_parish" in st.session_state:
     st.session_state["parish_choice"] = st.session_state.pop("next_parish")
 
@@ -669,14 +681,23 @@ with welcome_column:
         )
         parish_options = st.session_state["parishes"].copy()
         if st.session_state["can_manage"]:
-            parish_options.append("➕ Ajouter une paroisse")
-        selected_parish = st.selectbox(
-            "Espace de la troupe",
-            options=parish_options,
-            key="parish_choice",
-        )
+            parish_options.append(ADD_BRANCH_OPTION)
+        if parish_options:
+            selected_parish = st.selectbox(
+                "Branche scoute",
+                options=parish_options,
+                format_func=lambda name: (
+                    ADD_BRANCH_OPTION
+                    if name == ADD_BRANCH_OPTION
+                    else f"{st.session_state['branch_types'].get(name) or 'Espace existant'} — {name}"
+                ),
+                key="parish_choice",
+            )
+        else:
+            selected_parish = None
+            st.info("Aucune branche n’a encore été ajoutée à cette troupe.")
 
-if selected_parish != "➕ Ajouter une paroisse":
+if selected_parish is not None and selected_parish != ADD_BRANCH_OPTION:
     overview_data = st.session_state["parish_data"][selected_parish]
     if remote_mode:
         upcoming_meetings = (
@@ -700,28 +721,33 @@ if selected_parish != "➕ Ajouter une paroisse":
     metric_columns[2].metric("Réunions à venir", len(upcoming_meetings), "Au calendrier")
     st.markdown("<div class='section-rule'></div>", unsafe_allow_html=True)
 
-if st.session_state["can_manage"] and selected_parish == "➕ Ajouter une paroisse":
-    st.subheader("Nouvelle paroisse")
+if st.session_state["can_manage"] and selected_parish == ADD_BRANCH_OPTION:
+    st.subheader("Ajouter une branche scoute")
 
     with st.form("add_parish_form", clear_on_submit=True):
-        new_parish = st.text_input("Nom de la paroisse")
-        submitted = st.form_submit_button("Ajouter la paroisse")
+        branch_type = st.selectbox("Type de branche", BRANCH_TYPES)
+        new_parish = st.text_input("Nom de la branche ou de l’unité")
+        submitted = st.form_submit_button("Ajouter la branche")
 
     if submitted:
         parish_name = new_parish.strip()
         if not parish_name:
-            st.warning("Saisissez le nom de la paroisse.")
+            st.warning("Saisissez le nom de la branche ou de l’unité.")
+        elif parish_name == ADD_BRANCH_OPTION:
+            st.warning("Ce nom est réservé par l’application.")
         elif parish_name in st.session_state["parishes"]:
-            st.warning("Cette paroisse existe déjà.")
+            st.warning("Une branche portant ce nom existe déjà.")
         else:
             st.session_state["parishes"].append(parish_name)
             st.session_state["parish_data"][parish_name] = default_parish_data()
+            st.session_state["branch_types"][parish_name] = branch_type
             st.session_state["next_parish"] = parish_name
             save_data()
             st.rerun()
 
-else:
-    safe_parish = escape(selected_parish)
+elif selected_parish is not None:
+    branch_type = st.session_state["branch_types"].get(selected_parish)
+    branch_heading = f"{branch_type} · {selected_parish}" if branch_type else selected_parish
     day_seed = date.today().toordinal() + sum(ord(char) for char in selected_parish)
     welcome_messages = [
         "Un pas après l'autre, l'aventure se construit ensemble.",
@@ -734,7 +760,7 @@ else:
     st.markdown(
         f"""
         <div class="welcome-banner">
-            <h2>Bienvenue à {safe_parish} ⚜️</h2>
+            <h2>Bienvenue · {escape(branch_heading)} ⚜️</h2>
             <p>{welcome_message} 🔥⛺</p>
         </div>
         """,
@@ -860,7 +886,7 @@ else:
                     st.rerun()
 
     with meetings_tab:
-        st.subheader("📅 Réunions de la troupe")
+        st.subheader("📅 Réunions du groupe · communes aux branches")
 
         if st.session_state["can_manage"]:
             with st.form("add_meeting_form", clear_on_submit=True):

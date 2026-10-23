@@ -1,4 +1,5 @@
 .streamlit/secrets.toml
 scoutvibe_data.json
+.venv/
 __pycache__/
 *.py[cod]
